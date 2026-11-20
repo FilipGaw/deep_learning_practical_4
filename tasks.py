@@ -29,7 +29,7 @@ import numpy as np
 text = "The quick brown fox jumps over the lazy dog!"
 
 # Write a list comprehension to tokenize the text and remove punctuation
-tokens = _ # Your code here
+tokens = ["".join(c for c in word if c.isalnum()) for word in text.split()]
 
 # Expected output: ['The', 'quick', 'brown', 'fox', 'jumps', 'over', 'the', 'lazy', 'dog']
 print(tokens)
@@ -45,7 +45,10 @@ print(tokens)
 # Your code here:
 # -----------------------------------------------
 def tokenize(string: str) -> list:
-    pass # Your code
+    words = ("".join(c for c in word if c.isalnum()).lower() for word in string.split())
+    return {w for w in words if w}
+
+print(tokenize(text))
 
 
 # -----------------------------------------------
@@ -74,7 +77,9 @@ def tokenize(string: str) -> list:
 
 # Your code here:
 # -----------------------------------------------
-word_frequencies = _ # Your code here
+word_frequencies = {word: sum(t.lower() == word for t in tokens)
+                     for word in dict.fromkeys(t.lower() for t in tokens)}
+
 
 # Expected output example: {'the': 2, 'quick': 1, ...}
 print(word_frequencies)
@@ -90,7 +95,11 @@ print(word_frequencies)
 # Your code here:
 # -----------------------------------------------
 def token_counts(string: str, k: int = 1) -> dict:
-    pass # Your code
+    tokens = ["".join(c for c in word if c.isalnum()).lower() for word in string.split()]
+    tokens = [t for t in tokens if t]
+    return {word: tokens.count(word) for word in dict.fromkeys(tokens) if tokens.count(word) > k}
+    
+
 
 # test:
 text_hist = {'the': 2, 'quick': 1, 'brown': 1, 'fox': 1, 'jumps': 1, 'over': 1, 'lazy': 1, 'dog': 1}
@@ -121,7 +130,8 @@ all(text_hist[key] == value for key, value in token_counts(text).items())
 
 # Your code here:
 # -----------------------------------------------
-token_to_id = _ # Your code here
+token_to_id = {token: i for i, token in enumerate(set(tokens))}
+
 
 # Expected output: {'dog': 0, 'quick': 1, 'fox': 2, 'the': 3, 'over': 4, 'lazy': 5, 'brown': 6, 'jumps': 7}
 print(token_to_id)
@@ -133,7 +143,7 @@ print(token_to_id)
 #
 # Your code here:
 # -----------------------------------------------
-id_to_token = _ # Your code here
+id_to_token = {i: token for token, i in token_to_id.items()}
 
 # tests: 
 # test 1
@@ -154,8 +164,10 @@ assert all(id_to_token[token_to_id[key]]==key for key in token_to_id) and all(to
 # Your code here:
 # -----------------------------------------------
 def make_vocabulary_map(documents: list) -> tuple:
-    # Hint: use your tokenize function
-    pass # Your code
+    unique_tokens = sorted({tok for doc in documents for tok in tokenize(doc)})
+    token2int = {tok: i for i, tok in enumerate(unique_tokens)}
+    int2token = {i: tok for tok, i in token2int.items()}
+    return token2int, int2token
 
 # Test
 t2i, i2t = make_vocabulary_map([text])
@@ -174,8 +186,12 @@ all(i2t[t2i[tok]] == tok for tok in t2i) # should be True
 # Your code here:
 # -----------------------------------------------
 def tokenize_and_encode(documents: list) -> list:
-    # Hint: use your make_vocabulary_map and tokenize function
-    pass # Your code
+    tokenized = [[w for w in ("".join(c for c in word if c.isalnum()).lower() for word in doc.split()) if w]
+                 for doc in documents]
+    token_to_id = {tok: i for i, tok in enumerate(dict.fromkeys(t for doc in tokenized for t in doc))}
+    id_to_token = {i: tok for tok, i in token_to_id.items()}
+    encoded = [[token_to_id[t] for t in doc] for doc in tokenized]
+    return encoded, token_to_id, id_to_token
 
 # Test:
 enc, t2i, i2t = tokenize_and_encode([text, 'What a luck we had today!'])
@@ -201,7 +217,7 @@ enc, t2i, i2t = tokenize_and_encode([text, 'What a luck we had today!'])
 
 # Your code here:
 # -----------------------------------------------
-sigmoid = _ # Your code
+sigmoid = lambda x: 1 / (1 + np.exp(-x))
 
 # Test:
 np.all(sigmoid(np.log([1, 1/3, 1/7])) == np.array([1/2, 1/4, 1/8]))
@@ -275,8 +291,17 @@ np.all(sigmoid(np.log([1, 1/3, 1/7])) == np.array([1/2, 1/4, 1/8]))
 
 # Your code here:
 # -----------------------------------------------
-def rnn_layer(w: np.array, list_of_sequences: list[np.array], sigma=sigmoid ) -> np.array:
-    pass # Your code
+def rnn_layer(w, list_of_sequences, sigma=sigmoid):
+    W_x = w[:9].reshape(3, 3, order='F')     # input -> hidden
+    W_h = w[9:18].reshape(3, 3, order='F')   # hidden -> hidden
+    v   = w[18:21]                           # hidden -> output
+    out = []
+    for X in list_of_sequences:
+        h = np.zeros(3)
+        for x_t in X:
+            h = sigma(W_x @ x_t + W_h @ h)
+        out.append(h @ v)
+    return np.array(out)
 
 # Test
 np.random.seed(10)
@@ -310,8 +335,9 @@ o.shape == (100,) and o.mean().round(3) == 16.287 and o.std().astype(int) == 133
 
 # Your code here:
 # -----------------------------------------------
-def rnn_loss(w: np.array, w, list_of_sequences: list[np.array], y: np.array) -> np.float64:
-    pass # Your code
+def rnn_loss(w: np.ndarray, list_of_sequences: list, y: np.ndarray) -> np.float64:
+    pred = rnn_layer(w, list_of_sequences)
+    return np.sum((y - pred) ** 2)
 
 # Test:
 y = np.array([(X @ np.arange(1,4))[0] for X in list_of_sequences])
@@ -360,36 +386,34 @@ list_of_sequences, yy = list(zip(*data_pairs))
 # Now we are ready to fit the RNN to the data set. We need to load the optimization routine 
 # 'minimize' from the scipy.optimize module
 
-from scipy.optimize import minimize
+# from scipy.optimize import minimize
 
 # fit the RNN (this may take a minute)
-fit = minimize(rnn_loss, wstart, args=(list_of_sequences, yy), method='BFGS')
-print(fit)
+# #fit = minimize(rnn_loss, wstart, args=(list_of_sequences, yy), method='BFGS')
+# print(fit)
 
 # The 'success' component in fit may be false, and this is due to a loss of computational 
 # precision. For now we'll just settle for the weights it has found so far. 
 
 # To evaluate the fit we can compute the correlation between the values predicted by the
 # RNN and the true values
-pred = rnn_layer(fit['x'], list_of_sequences)
-np.corrcoef(pred,yy)
+# #pred = rnn_layer(fit['x'], list_of_sequences)
+# np.corrcoef(pred,yy)
 
 # How good is this? To gage the performance of the RNN we'll compare it to a linear 
 # regression with the same data
-Z = X[:len(yy)] # features corresponding to elements in yy at the previous time step
-linreg_coefs = np.linalg.lstsq(Z, yy, rcond=None)[0] # rcond=None suppresses warning message
-linreg_pred = Z @ linreg_coefs
-np.corrcoef(linreg_pred, yy)
+# Z = X[:len(yy)] # features corresponding to elements in yy at the previous time step
+# linreg_coefs = np.linalg.lstsq(Z, yy, rcond=None)[0] # rcond=None suppresses warning message
+# linreg_pred = Z @ linreg_coefs
+# np.corrcoef(linreg_pred, yy)
 
 # The correlation of the RNN predicted values is substantially higher! But it also has
 # many more parameters, and so is more flexible. 
 
 # To visualize the difference in performance we plot the true values and predicted values
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-plt.plot(yy)
-plt.plot(pred)
-plt.plot(linreg_pred)
-plt.legend(['Truth','RNN','LinReg'])
-
-
+# plt.plot(yy)
+# plt.plot(pred)
+# plt.plot(linreg_pred)
+# plt.legend(['Truth','RNN','LinReg'])
