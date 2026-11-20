@@ -392,27 +392,27 @@ o.size == 1 and o.round(3) == 17794.733
 # The data that we will fit is a macroeconomics data set. We'll try to predict inflation ('infl')
 # from the consumer price index ('cpi') and unemployment rate ('unemp').
 # First, load the data set:
-from statsmodels.datasets import macrodata
+# from statsmodels.datasets import macrodata
 
-data = macrodata.load_pandas().data
-X = np.hstack([np.ones((len(data),1)), data[['cpi','unemp']].values]) # Features: CPI and unemployment
-y = data['infl'].values # Target: inflation
+# data = macrodata.load_pandas().data
+# X = np.hstack([np.ones((len(data),1)), data[['cpi','unemp']].values]) # Features: CPI and unemployment
+# y = data['infl'].values # Target: inflation
 
 # Next we want to prepare a dataset for training sequence-based models like RNNs. We create 
 # input-output pairs where each input is a sequence of seq_len time steps from X, and the output 
 # is the corresponding target value y at the next time step after the sequence.
 
-seq_len = 7 # Define the length of each input sequence (we choose 7 consecutive time steps).
+# seq_len = 7 # Define the length of each input sequence (we choose 7 consecutive time steps).
 
 # Create a list of tuples:
-data_pairs = [(X[i:i+seq_len], y[i+seq_len]) for i in range(len(X)-seq_len)]
+# data_pairs = [(X[i:i+seq_len], y[i+seq_len]) for i in range(len(X)-seq_len)]
 # - First element: a slice of `X` of length `seq_len` (the input sequence).
 # - Second element: the target value `y` corresponding to the step after the sequence.
 # Example: If seq_len=4, for i=0, pair is (X[0:4], y[4]).
 
 # We need the input sequences and target values in a separate list. A trick to do this is this:
 
-list_of_sequences, yy = list(zip(*data_pairs))
+# list_of_sequences, yy = list(zip(*data_pairs))
 
 # Here, the zip(*...) is used for transposing a list of tuples. It splits the tuple pairs into 
 # two separate lists:
