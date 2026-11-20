@@ -45,10 +45,11 @@ print(tokens)
 # Your code here:
 # -----------------------------------------------
 def tokenize(string: str) -> list:
-    words = ("".join(c for c in word if c.isalnum()).lower() for word in string.split())
-    return {w for w in words if w}
-
-print(tokenize(text))
+    words = [
+        "".join(c for c in word if c.isalnum()).lower()
+        for word in string.split()
+    ]
+    return list(dict.fromkeys(word for word in words if word))
 
 
 # -----------------------------------------------
@@ -95,10 +96,25 @@ print(word_frequencies)
 # Your code here:
 # -----------------------------------------------
 def token_counts(string: str, k: int = 1) -> dict:
-    tokens = ["".join(c for c in word if c.isalnum()).lower() for word in string.split()]
-    tokens = [t for t in tokens if t]
-    return {word: tokens.count(word) for word in dict.fromkeys(tokens) if tokens.count(word) > k}
-    
+    words = [
+        "".join(c for c in word if c.isalnum()).lower()
+        for word in string.split()
+    ]
+
+    counts = {}
+
+    for word in words:
+        if word:
+            if word in counts:
+                counts[word] += 1
+            else:
+                counts[word] = 1
+
+    return {
+        word: count
+        for word, count in counts.items()
+        if count >= k
+    }
 
 
 # test:
@@ -130,7 +146,9 @@ all(text_hist[key] == value for key, value in token_counts(text).items())
 
 # Your code here:
 # -----------------------------------------------
-token_to_id = {token: i for i, token in enumerate(set(tokens))}
+token_to_id = {
+    token: i for i, token in enumerate(dict.fromkeys(tokens))
+}
 
 
 # Expected output: {'dog': 0, 'quick': 1, 'fox': 2, 'the': 3, 'over': 4, 'lazy': 5, 'brown': 6, 'jumps': 7}
@@ -185,17 +203,37 @@ all(i2t[t2i[tok]] == tok for tok in t2i) # should be True
 
 # Your code here:
 # -----------------------------------------------
-def tokenize_and_encode(documents: list) -> list:
-    tokenized = [[w for w in ("".join(c for c in word if c.isalnum()).lower() for word in doc.split()) if w]
-                 for doc in documents]
-    token_to_id = {tok: i for i, tok in enumerate(dict.fromkeys(t for doc in tokenized for t in doc))}
-    id_to_token = {i: tok for tok, i in token_to_id.items()}
-    encoded = [[token_to_id[t] for t in doc] for doc in tokenized]
+def tokenize_and_encode(documents: list) -> tuple:
+    # Tokenize every document using the Task 2 function
+    tokenized = [tokenize(doc) for doc in documents]
+
+    # Create vocabulary in first-occurrence order
+    vocabulary = dict.fromkeys(
+        token for doc in tokenized for token in doc
+    )
+
+    # Create both mappings
+    token_to_id = {
+        token: i for i, token in enumerate(vocabulary)
+    }
+
+    id_to_token = {
+        i: token for token, i in token_to_id.items()
+    }
+
+    # Convert each document into token IDs
+    encoded = [
+        [token_to_id[token] for token in doc]
+        for doc in tokenized
+    ]
+
     return encoded, token_to_id, id_to_token
+    
 
 # Test:
 enc, t2i, i2t = tokenize_and_encode([text, 'What a luck we had today!'])
 " | ".join([" ".join(i2t[i] for i in e) for e in enc]) == 'the quick brown fox jumps over the lazy dog | what a luck we had today'
+
 # -----------------------------------------------
 
 
